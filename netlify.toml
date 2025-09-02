@@ -1,0 +1,22 @@
+# Netlify configuration for a Vite-based React application
+
+[build]
+  # Command to build your site
+  command = "npm run build"
+  
+  # Directory where the built site is located
+  publish = "dist"
+
+[dev]
+  # Local development server settings (optional, but good practice)
+  command = "npm run dev"
+  targetPort = 5173 # Default Vite port
+  port = 8888
+
+[[redirects]]
+  # This rule is crucial for Single Page Applications (SPAs) like yours.
+  # It ensures that any request that doesn't match a file in the 'publish' directory
+  # is redirected to your index.html file, allowing React Router to handle the route.
+  from = "/*"
+  to = "/index.html"
+  status = 200
