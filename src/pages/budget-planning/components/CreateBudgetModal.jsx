@@ -3,8 +3,11 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 const CreateBudgetModal = ({ isOpen, onClose, onSave, editingBudget = null }) => {
+  const { currency, locale } = usePreferences();
   const [currentStep, setCurrentStep] = useState(1);
   const [budgetData, setBudgetData] = useState({
     name: '',
@@ -286,13 +289,13 @@ const CreateBudgetModal = ({ isOpen, onClose, onSave, editingBudget = null }) =>
                   <div>
                     <p className="text-xs text-muted-foreground">Total Income</p>
                     <p className="text-sm font-semibold text-foreground">
-                      ${parseFloat(budgetData?.totalIncome)?.toLocaleString()}
+                      {formatCurrency(parseFloat(budgetData?.totalIncome) || 0, currency, locale)}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Allocated</p>
                     <p className="text-sm font-semibold text-foreground">
-                      ${getTotalAllocated()?.toLocaleString()}
+                      {formatCurrency(getTotalAllocated() || 0, currency, locale)}
                     </p>
                   </div>
                   <div>
@@ -300,7 +303,7 @@ const CreateBudgetModal = ({ isOpen, onClose, onSave, editingBudget = null }) =>
                     <p className={`text-sm font-semibold ${
                       getRemainingBudget() >= 0 ? 'text-success' : 'text-error'
                     }`}>
-                      ${Math.abs(getRemainingBudget())?.toLocaleString()}
+                      {formatCurrency(Math.abs(getRemainingBudget()) || 0, currency, locale)}
                       {getRemainingBudget() < 0 && ' over'}
                     </p>
                   </div>
@@ -339,8 +342,8 @@ const CreateBudgetModal = ({ isOpen, onClose, onSave, editingBudget = null }) =>
                     <Icon name="AlertTriangle" size={16} />
                     <span className="text-sm font-medium">
                       {getRemainingBudget() > 0 
-                        ? `You have $${getRemainingBudget()?.toLocaleString()} unallocated`
-                        : `You're over budget by $${Math.abs(getRemainingBudget())?.toLocaleString()}`
+                        ? `You have ${formatCurrency(getRemainingBudget(), currency, locale)} unallocated`
+                        : `You're over budget by ${formatCurrency(Math.abs(getRemainingBudget()), currency, locale)}`
                       }
                     </span>
                   </div>

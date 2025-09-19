@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 const AIRecommendations = ({ budgetData, onApplyRecommendation }) => {
   const [expandedRecommendation, setExpandedRecommendation] = useState(null);
+  const [dismissedRecommendations, setDismissedRecommendations] = useState([]);
+  const { currency, locale } = usePreferences();
 
   const recommendations = [
     {
@@ -11,8 +15,8 @@ const AIRecommendations = ({ budgetData, onApplyRecommendation }) => {
       type: 'optimization',
       priority: 'high',
       title: 'Reduce Dining Out Budget',
-      description: 'You\'ve spent 120% of your dining budget this month. Consider reducing by $200.',
-      impact: 'Save $200/month',
+      description: `You've spent 120% of your dining budget this month. Consider reducing by ${formatCurrency(200, currency, locale)}.`,
+      impact: `Save ${formatCurrency(200, currency, locale)}/month`,
       category: 'Food & Dining',
       currentAmount: 800,
       suggestedAmount: 600,
@@ -23,7 +27,7 @@ const AIRecommendations = ({ budgetData, onApplyRecommendation }) => {
     },
     {
       id: 2,
-      type: 'opportunity',priority: 'medium',title: 'Increase Emergency Fund Allocation',description: 'You have extra budget capacity. Consider boosting your emergency fund.',impact: 'Build $300 more emergency savings',category: 'Savings',
+      type: 'opportunity',priority: 'medium',title: 'Increase Emergency Fund Allocation',description: 'You have extra budget capacity. Consider boosting your emergency fund.',impact: `Build ${formatCurrency(300, currency, locale)} more emergency savings`,category: 'Savings',
       currentAmount: 500,
       suggestedAmount: 800,
       reasoning: `Your current spending is 15% below budget, creating an opportunity to increase savings.\n\nCurrent situation:\n• Emergency fund: $2,400 (2.1 months expenses)\n• Recommended: $6,000 (6 months expenses)\n• Available budget surplus: $300/month\n\nThis adjustment will help you reach your emergency fund goal 8 months faster.`,
@@ -33,7 +37,7 @@ const AIRecommendations = ({ budgetData, onApplyRecommendation }) => {
     },
     {
       id: 3,
-      type: 'alert',priority: 'high',title: 'Transportation Costs Rising',description: 'Gas and maintenance costs are 40% higher than budgeted.',impact: 'Budget shortfall of $180',category: 'Transportation',
+      type: 'alert',priority: 'high',title: 'Transportation Costs Rising',description: 'Gas and maintenance costs are 40% higher than budgeted.',impact: `Budget shortfall of ${formatCurrency(180, currency, locale)}`,category: 'Transportation',
       currentAmount: 450,
       suggestedAmount: 630,
       reasoning: `Recent gas price increases and unexpected car maintenance have pushed transportation costs above budget.\n\nCost breakdown:\n• Gas: +$120 (price increase)\n• Maintenance: +$60 (unexpected repairs)\n• Insurance: On budget\n\nThis trend is likely to continue based on current market conditions.`,
@@ -43,7 +47,7 @@ const AIRecommendations = ({ budgetData, onApplyRecommendation }) => {
     },
     {
       id: 4,
-      type: 'insight',priority: 'low',title: 'Seasonal Spending Pattern Detected',description: 'Your entertainment spending increases 60% during summer months.',impact: 'Plan for $240 seasonal increase',category: 'Entertainment',
+      type: 'insight',priority: 'low',title: 'Seasonal Spending Pattern Detected',description: 'Your entertainment spending increases 60% during summer months.',impact: `Plan for ${formatCurrency(240, currency, locale)} seasonal increase`,category: 'Entertainment',
       currentAmount: 400,
       suggestedAmount: 400,
       reasoning: `Historical data shows consistent seasonal spending patterns:\n\nSummer months (Jun-Aug):\n• Entertainment: +60% average\n• Travel: +200% average\n• Utilities: +30% (AC usage)\n\nPlanning ahead can help smooth out these variations and prevent budget overruns.`,
@@ -92,8 +96,14 @@ const AIRecommendations = ({ budgetData, onApplyRecommendation }) => {
     // Show success feedback
   };
 
+  const handleDismissRecommendation = (recommendationId) => {
+    setDismissedRecommendations(prev => [...prev, recommendationId]);
+  };
+
+  
   return (
     <div className="bg-card rounded-lg border border-border financial-shadow-card">
+      {/* Header */}
       <div className="p-4 lg:p-6 border-b border-border">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -107,141 +117,150 @@ const AIRecommendations = ({ budgetData, onApplyRecommendation }) => {
           </div>
         </div>
       </div>
+
+      {/* Recommendations List */}
       <div className="divide-y divide-border">
-        {recommendations?.map((recommendation) => {
+        {recommendations
+          ?.filter(recommendation => !dismissedRecommendations.includes(recommendation.id))
+          .map((recommendation) => {
           const isExpanded = expandedRecommendation === recommendation?.id;
           
           return (
             <div key={recommendation?.id} className="p-4 lg:p-6">
-              <div className="flex items-start space-x-4">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getPriorityBg(recommendation?.priority)}`}>
-                  <Icon 
-                    name={getTypeIcon(recommendation?.type)} 
-                    size={20} 
-                    className={getPriorityColor(recommendation?.priority)}
-                  />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h4 className="font-medium text-foreground">{recommendation?.title}</h4>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          recommendation?.priority === 'high' ? 'bg-error/10 text-error' :
-                          recommendation?.priority === 'medium'? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'
-                        }`}>
-                          {recommendation?.priority} priority
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {recommendation?.description}
-                      </p>
-                      <div className="flex items-center space-x-4 text-sm">
-                        <span className="text-success font-medium">{recommendation?.impact}</span>
-                        <span className="text-muted-foreground">• {recommendation?.category}</span>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => toggleExpanded(recommendation?.id)}
-                    >
-                      <Icon name={isExpanded ? 'ChevronUp' : 'ChevronDown'} size={16} />
-                    </Button>
+              {/* Recommendation Header */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start space-x-3 flex-1">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getPriorityBg(recommendation?.priority)} flex-shrink-0`}>
+                    <Icon
+                      name={getTypeIcon(recommendation?.type)}
+                      size={16}
+                      className={getPriorityColor(recommendation?.priority)}
+                    />
                   </div>
-
-                  {/* Budget comparison */}
-                  {recommendation?.currentAmount && recommendation?.suggestedAmount && (
-                    <div className="flex items-center space-x-4 mb-3 text-sm">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-muted-foreground">Current:</span>
-                        <span className="font-medium text-foreground">
-                          ${recommendation?.currentAmount?.toLocaleString()}
-                        </span>
-                      </div>
-                      <Icon name="ArrowRight" size={14} className="text-muted-foreground" />
-                      <div className="flex items-center space-x-2">
-                        <span className="text-muted-foreground">Suggested:</span>
-                        <span className="font-medium text-primary">
-                          ${recommendation?.suggestedAmount?.toLocaleString()}
-                        </span>
-                      </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center flex-wrap gap-2 mb-1">
+                      <h4 className="font-semibold text-foreground text-sm leading-tight">
+                        {recommendation?.title}
+                      </h4>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        recommendation?.priority === 'high' ? 'bg-error/10 text-error' :
+                        recommendation?.priority === 'medium'? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'
+                      }`}>
+                        {recommendation?.priority}
+                      </span>
                     </div>
-                  )}
-
-                  {/* Expanded content */}
-                  {isExpanded && (
-                    <div className="mt-4 space-y-4 p-4 bg-muted/50 rounded-lg">
-                      {/* Reasoning */}
-                      <div>
-                        <h5 className="font-medium text-foreground mb-2">Analysis</h5>
-                        <p className="text-sm text-muted-foreground whitespace-pre-line">
-                          {recommendation?.reasoning}
-                        </p>
-                      </div>
-
-                      {/* Action items */}
-                      <div>
-                        <h5 className="font-medium text-foreground mb-2">Recommended Actions</h5>
-                        <ul className="space-y-2">
-                          {recommendation?.actionItems?.map((action, index) => (
-                            <li key={index} className="flex items-start space-x-2 text-sm">
-                              <Icon name="CheckCircle" size={14} className="text-success mt-0.5 flex-shrink-0" />
-                              <span className="text-muted-foreground">{action}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                    
+                    <p className="text-sm text-muted-foreground mb-2 leading-tight">
+                      {recommendation?.description}
+                    </p>
+                    
+                    <div className="flex items-center flex-wrap gap-3 text-xs">
+                      <span className="text-success font-medium">{recommendation?.impact}</span>
+                      <span className="text-muted-foreground">• {recommendation?.category}</span>
                     </div>
-                  )}
-
-                  {/* Action buttons */}
-                  <div className="flex items-center space-x-2 mt-3">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => handleApplyRecommendation(recommendation)}
-                      iconName="Check"
-                      iconPosition="left"
-                      iconSize={14}
-                    >
-                      Apply
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      iconName="Eye"
-                      iconPosition="left"
-                      iconSize={14}
-                    >
-                      View Details
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      iconName="X"
-                      iconPosition="left"
-                      iconSize={14}
-                      className="text-muted-foreground"
-                    >
-                      Dismiss
-                    </Button>
                   </div>
                 </div>
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => toggleExpanded(recommendation?.id)}
+                  className="flex-shrink-0"
+                >
+                  <Icon name={isExpanded ? 'ChevronUp' : 'ChevronDown'} size={16} />
+                </Button>
+              </div>
+
+              {/* Budget Comparison */}
+              {recommendation?.currentAmount && recommendation?.suggestedAmount && (
+                <div className="flex items-center justify-between bg-muted/30 rounded-md p-2 mb-3">
+                  <div className="text-xs text-muted-foreground">Budget Adjustment</div>
+                  <div className="flex items-center space-x-2 text-sm">
+                    <span className="text-foreground font-medium">
+                      {formatCurrency(recommendation?.currentAmount, currency, locale)}
+                    </span>
+                    <Icon name="ArrowRight" size={12} className="text-muted-foreground" />
+                    <span className="text-primary font-semibold">
+                      {formatCurrency(recommendation?.suggestedAmount, currency, locale)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Expanded Content */}
+              {isExpanded && (
+                <div className="mt-3 space-y-4 p-3 bg-muted/30 rounded-lg border">
+                  {/* Analysis Section */}
+                  <div>
+                    <h5 className="font-medium text-foreground text-sm mb-2 flex items-center">
+                      <Icon name="BarChart3" size={14} className="mr-2 text-primary" />
+                      Analysis
+                    </h5>
+                    <div className="text-xs text-muted-foreground bg-background/50 p-2 rounded border">
+                      <div className="whitespace-pre-line leading-relaxed">
+                        {recommendation?.reasoning}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Items */}
+                  <div>
+                    <h5 className="font-medium text-foreground text-sm mb-2 flex items-center">
+                      <Icon name="CheckCircle" size={14} className="mr-2 text-success" />
+                      Recommended Actions
+                    </h5>
+                    <ul className="space-y-2 text-xs">
+                      {recommendation?.actionItems?.map((action, index) => (
+                        <li key={index} className="flex items-start space-x-2">
+                          <Icon name="Check" size={12} className="text-success mt-0.5 flex-shrink-0" />
+                          <span className="text-muted-foreground">{action}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end space-x-2 mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleApplyRecommendation(recommendation)}
+                  className="text-primary hover:bg-primary/10"
+                >
+                  <Icon name="Check" size={14} className="mr-1" />
+                  Apply
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDismissRecommendation(recommendation.id)}
+                  className="text-muted-foreground hover:bg-muted/30"
+                >
+                  <Icon name="X" size={14} className="mr-1" />
+                  Dismiss
+                </Button>
               </div>
             </div>
           );
         })}
       </div>
+
       {/* Footer */}
-      <div className="p-4 lg:p-6 border-t border-border bg-muted/50">
+      <div className="p-4 lg:p-6 border-t border-border bg-muted/30">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-            <Icon name="Sparkles" size={16} />
-            <span>Recommendations updated daily based on your spending patterns</span>
+          <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+            <Icon name="Sparkles" size={14} />
+            <span>Updated daily based on your spending</span>
           </div>
-          <Button variant="ghost" size="sm" iconName="RefreshCw" iconPosition="left" iconSize={14}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:bg-muted/30"
+          >
+            <Icon name="RefreshCw" size={14} className="mr-1" />
             Refresh
           </Button>
         </div>

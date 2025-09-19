@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 const ExpenseCard = ({ expense, onEdit, onDelete }) => {
   const [showActions, setShowActions] = useState(false);
@@ -89,6 +91,8 @@ const ExpenseCard = ({ expense, onEdit, onDelete }) => {
     card?.addEventListener('touchend', handleSwipeEnd);
   };
 
+  const { currency, locale } = usePreferences();
+
   return (
     <div className="relative overflow-hidden">
       {/* Action Buttons (Hidden by default, shown on swipe) */}
@@ -142,7 +146,7 @@ const ExpenseCard = ({ expense, onEdit, onDelete }) => {
           {/* Amount and Date */}
           <div className="text-right">
             <p className="font-semibold text-foreground">
-              -${expense?.amount?.toFixed(2)}
+              {formatCurrency(-(expense?.amount || 0), currency, locale)}
             </p>
             <p className="text-sm text-muted-foreground">
               {formatDate(expense?.date)}

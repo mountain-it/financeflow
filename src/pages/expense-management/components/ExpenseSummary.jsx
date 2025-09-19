@@ -1,5 +1,7 @@
 import React from 'react';
 import Icon from '../../../components/AppIcon';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 const ExpenseSummary = ({ expenses, filteredExpenses, filters }) => {
   const calculateTotals = (expenseList) => {
@@ -12,6 +14,7 @@ const ExpenseSummary = ({ expenses, filteredExpenses, filters }) => {
 
   const { total, count, average } = calculateTotals(filteredExpenses);
   const { total: allTimeTotal } = calculateTotals(expenses);
+  const { currency, locale } = usePreferences();
 
   const getCategoryBreakdown = () => {
     const breakdown = filteredExpenses?.reduce((acc, expense) => {
@@ -42,7 +45,7 @@ const ExpenseSummary = ({ expenses, filteredExpenses, filters }) => {
             </span>
           </div>
           <p className="text-xl font-bold text-destructive">
-            ${total?.toFixed(2)}
+            {formatCurrency(total, currency, locale)}
           </p>
         </div>
 
@@ -62,7 +65,7 @@ const ExpenseSummary = ({ expenses, filteredExpenses, filters }) => {
             <span className="text-sm font-medium text-muted-foreground">Average</span>
           </div>
           <p className="text-xl font-bold text-foreground">
-            ${average?.toFixed(2)}
+            {formatCurrency(average, currency, locale)}
           </p>
         </div>
 
@@ -79,7 +82,7 @@ const ExpenseSummary = ({ expenses, filteredExpenses, filters }) => {
               </p>
               {topCategories?.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  ${topCategories?.[0]?.[1]?.toFixed(2)}
+                  {formatCurrency(topCategories?.[0]?.[1], currency, locale)}
                 </p>
               )}
             </>
@@ -90,7 +93,7 @@ const ExpenseSummary = ({ expenses, filteredExpenses, filters }) => {
                 <span className="text-sm font-medium text-muted-foreground">All Time</span>
               </div>
               <p className="text-xl font-bold text-foreground">
-                ${allTimeTotal?.toFixed(2)}
+                {formatCurrency(allTimeTotal, currency, locale)}
               </p>
             </>
           )}

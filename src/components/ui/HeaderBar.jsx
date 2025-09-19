@@ -3,9 +3,12 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Icon from '../AppIcon';
 import Button from './Button';
+import ThemeToggle from './ThemeToggle';
+import { usePreferences } from '../../contexts/PreferencesContext';
 
 const HeaderBar = () => {
-  const { signOut } = useAuth();
+  const { sidebarCollapsed, setSidebarCollapsed } = usePreferences();
+  const { signOut, user, userProfile } = useAuth();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([
@@ -40,6 +43,22 @@ const HeaderBar = () => {
   
   const unreadCount = notifications?.filter(n => n?.unread)?.length;
 
+  // Derived user display info
+  const displayName = (
+    userProfile?.full_name ||
+    user?.user_metadata?.full_name ||
+    (user?.email ? user.email.split('@')[0] : 'User')
+  );
+  const displayEmail = userProfile?.email || user?.email || '';
+  const initials = (() => {
+    const nameSource = userProfile?.full_name || user?.user_metadata?.full_name || '';
+    if (nameSource) {
+      const parts = nameSource.trim().split(/\s+/).filter(Boolean);
+      return parts.slice(0, 2).map(p => p[0]?.toUpperCase()).join('') || 'U';
+    }
+    return user?.email ? user.email[0]?.toUpperCase() : 'U';
+  })();
+
   const getPageTitle = () => {
     switch (location?.pathname) {
       case '/dashboard':
@@ -71,6 +90,8 @@ const HeaderBar = () => {
     setIsUserMenuOpen(false);
     if (action === 'profile') {
       navigate('/profile-settings');
+    } else if (action === 'login') {
+      navigate('/login');
     } else if (action === 'logout') {
       try {
         const { error } = await signOut();
@@ -131,6 +152,15 @@ const HeaderBar = () => {
       <div className="flex items-center justify-between h-16 px-4 lg:px-6">
         {/* Logo and Brand */}
         <div className="flex items-center space-x-3">
+          {/* Desktop sidebar toggle */}
+          <button
+            className="hidden lg:inline-flex items-center justify-center w-10 h-10 rounded-md hover:bg-muted financial-transition border border-border"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <Icon name={sidebarCollapsed ? 'ChevronsRight' : 'ChevronsLeft'} size={18} />
+          </button>
           <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
             <Icon name="TrendingUp" size={20} color="white" />
           </div>
@@ -152,6 +182,9 @@ const HeaderBar = () => {
               <Icon name="Search" size={20} />
             </Button>
           )}
+
+          {/* Global Theme Toggle */}
+          <ThemeToggle size="sm" />
 
           {/* Notifications */}
           <div className="relative">
@@ -228,7 +261,7 @@ const HeaderBar = () => {
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             >
               <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-primary-foreground">JD</span>
+                <span className="text-sm font-medium text-primary-foreground">{initials}</span>
               </div>
             </Button>
 
@@ -236,32 +269,46 @@ const HeaderBar = () => {
             {isUserMenuOpen && (
               <div className="user-menu-dropdown absolute right-0 mt-2 w-48 bg-popover border border-border rounded-lg financial-shadow-modal z-25">
                 <div className="p-3 border-b border-border">
-                  <p className="font-medium text-sm text-popover-foreground">John Doe</p>
-                  <p className="text-xs text-muted-foreground">john.doe@email.com</p>
+                  <p className="font-medium text-sm text-popover-foreground">{displayName}</p>
+                  <p className="text-xs text-muted-foreground">{displayEmail}</p>
                 </div>
                 <div className="py-1">
-                  <button
-                    className="w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-muted financial-transition flex items-center space-x-2"
-                    onClick={() => handleUserMenuClick('profile')}
-                  >
-                    <Icon name="User" size={16} />
-                    <span>Profile & Settings</span>
-                  </button>
-                  <button
-                    className="w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-muted financial-transition flex items-center space-x-2"
-                    onClick={() => handleUserMenuClick('help')}
-                  >
-                    <Icon name="HelpCircle" size={16} />
-                    <span>Help & Support</span>
-                  </button>
-                  <div className="border-t border-border my-1"></div>
-                  <button
-                    className="w-full px-3 py-2 text-left text-sm text-destructive hover:bg-muted financial-transition flex items-center space-x-2"
-                    onClick={() => handleUserMenuClick('logout')}
-                  >
-                    <Icon name="LogOut" size={16} />
-                    <span>Sign Out</span>
-                  </button>
+                  {user ? (
+                    <>
+                      <button
+                        className="w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-muted financial-transition flex items-center space-x-2"
+                        onClick={() => handleUserMenuClick('profile')}
+                      >
+                        <Icon name="User" size={16} />
+                        <span>Profile & Settings</span>
+                      </button>
+                      <button
+                        className="w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-muted financial-transition flex items-center space-x-2"
+                        onClick={() => handleUserMenuClick('help')}
+                      >
+                        <Icon name="HelpCircle" size={16} />
+                        <span>Help & Support</span>
+                      </button>
+                      <div className="border-t border-border my-1"></div>
+                      <button
+                        className="w-full px-3 py-2 text-left text-sm text-destructive hover:bg-muted financial-transition flex items-center space-x-2"
+                        onClick={() => handleUserMenuClick('logout')}
+                      >
+                        <Icon name="LogOut" size={16} />
+                        <span>Sign Out</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="w-full px-3 py-2 text-left text-sm text-popover-foreground hover:bg-muted financial-transition flex items-center space-x-2"
+                        onClick={() => handleUserMenuClick('login')}
+                      >
+                        <Icon name="LogIn" size={16} />
+                        <span>Sign In</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             )}

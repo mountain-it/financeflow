@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 
 import Select from '../../../components/ui/Select';
+import Button from '../../../components/ui/Button';
+import { currencyOptions as appCurrencyOptions } from '../../../utils/currencies';
 
 const PreferencesSettings = ({ isExpanded, onToggle, preferencesData, onPreferencesUpdate }) => {
   const [preferences, setPreferences] = useState(preferencesData);
@@ -18,6 +20,9 @@ const PreferencesSettings = ({ isExpanded, onToggle, preferencesData, onPreferen
     { value: 'CNY', label: 'Chinese Yuan (¥)' },
     { value: 'INR', label: 'Indian Rupee (₹)' }
   ];
+
+  // Use centralized currency list for consistency across the app
+  const extendedCurrencyOptions = appCurrencyOptions;
 
   const dateFormatOptions = [
     { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY (US Format)' },
@@ -133,7 +138,7 @@ const PreferencesSettings = ({ isExpanded, onToggle, preferencesData, onPreferen
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Select
                 label="Currency"
-                options={currencyOptions}
+                options={extendedCurrencyOptions}
                 value={preferences?.currency}
                 onChange={(value) => handlePreferenceChange('currency', value)}
               />
@@ -266,12 +271,23 @@ const PreferencesSettings = ({ isExpanded, onToggle, preferencesData, onPreferen
                   <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ring/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                 </label>
               </div>
-            </div>
           </div>
         </div>
-      )}
-    </div>
-  );
+        {/* Save Actions */}
+        <div className="border-t border-border pt-6 flex justify-end">
+          <Button
+            variant="default"
+            onClick={() => onPreferencesUpdate(preferences)}
+            iconName="Save"
+            iconPosition="left"
+          >
+            Save Changes
+          </Button>
+        </div>
+      </div>
+    )}
+  </div>
+);
 };
 
 export default PreferencesSettings;

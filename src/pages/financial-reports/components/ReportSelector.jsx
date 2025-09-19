@@ -3,7 +3,7 @@ import Select from '../../../components/ui/Select';
 import Button from '../../../components/ui/Button';
 
 
-const ReportSelector = ({ selectedReport, onReportChange, onCustomReportClick }) => {
+const ReportSelector = ({ selectedReport, onReportChange, onCustomReportClick, onExportPDF }) => {
   const reportOptions = [
     { value: 'monthly-summary', label: 'Monthly Summary', description: 'Complete overview of monthly finances' },
     { value: 'spending-analysis', label: 'Spending Analysis', description: 'Detailed breakdown of expenses by category' },
@@ -44,6 +44,7 @@ const ReportSelector = ({ selectedReport, onReportChange, onCustomReportClick })
             iconName="Download"
             iconPosition="left"
             className="w-full sm:w-auto"
+            onClick={onExportPDF}
           >
             Export PDF
           </Button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
 import HeaderBar from '../../components/ui/HeaderBar';
 import BottomTabNavigation from '../../components/ui/BottomTabNavigation';
@@ -11,10 +11,14 @@ import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import aiService from '../../services/aiService';
+import chatService from '../../services/chatService';
+import userContextService from '../../services/userContextService';
 
 const AIFinancialAssistant = () => {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
+  const [currentConversation, setCurrentConversation] = useState(null);
+  const currentConversationId = currentConversation?.id || null;
   const [isTyping, setIsTyping] = useState(false);
   const [showStarters, setShowStarters] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
@@ -32,29 +36,27 @@ const AIFinancialAssistant = () => {
 
   const loadUserContext = async () => {
     try {
-      const context = await aiService.getUserFinancialContext(user.id, supabase);
+      // Use the dedicated user context service (correct schema)
+      const context = await userContextService.getUserFinancialContext(user.id);
       setUserContext(context);
     } catch (error) {
       console.error('Error loading user context:', error);
     }
   };
 
-  // Initial AI welcome message
-  const initialMessages = [
+  // Initial AI welcome message (for empty/new conversations)
+  const initialMessages = useMemo(() => ([
     {
-      id: 1,
+      id: 'welcome',
       sender: 'ai',
       type: 'text',
-      content: `Hello! I'm your AI Financial Assistant powered by advanced AI technology. I'm here to help you manage your finances, optimize your budget, and achieve your financial goals.\n\nI can assist you with:\n• Personalized budget planning and optimization\n• Expense analysis and spending insights\n• Financial goal setting and tracking\n• Investment recommendations\n• Bill management and payment optimization\n\nI have access to your financial data to provide personalized advice. What would you like to explore today?`,
+      content: `Hello! I'm your Virtual Financial Assistant. I can help with budget planning, expense insights, goals, and more. Ask me anything about your account to get started.`,
       timestamp: new Date(Date.now() - 300000),
       status: 'delivered'
     }
-  ];
-
+  ]), []);
   useEffect(() => {
-    if (messages?.length === 0) {
-      setMessages(initialMessages);
-    }
+    if (messages?.length === 0) setMessages(initialMessages);
   }, []);
 
   const scrollToBottom = () => {
@@ -74,7 +76,7 @@ const AIFinancialAssistant = () => {
       console.error('Error generating AI response:', error);
       return {
         type: 'text',
-        content: 'I apologize, but I\'m having trouble processing your request right now. Please try again in a moment, or feel free to ask about budget planning, expense tracking, or financial goals.',
+        content: "I apologize, but I'm having trouble processing your request right now. Please try again in a moment, or feel free to ask about budget planning, expense tracking, or financial goals.",
         quickActions: [
           { label: 'Budget Help', icon: 'PieChart', type: 'budget_help' },
           { label: 'Expense Analysis', icon: 'Receipt', type: 'expense_analysis' }
@@ -93,76 +95,194 @@ const AIFinancialAssistant = () => {
   };
 
   const handleStarterClick = (starter) => {
-    handleSendMessage(starter);
+    handleSendMessage(starter.description);
   };
 
-  const handleConversationSelect = (conversation) => {
-    // Handle conversation selection
-    console.log('Selected conversation:', conversation);
+  // Map DB row to UI message
+  const mapRowToMessage = (row) => ({
+    id: row.id,
+    sender: row.role === 'user' ? 'user' : 'ai',
+    type: row.type || 'text',
+    content: row.content,
+    quickActions: row.quick_actions || null,
+    provider: row.provider || null,
+    timestamp: row.created_at ? new Date(row.created_at) : new Date(),
+    status: row.role === 'user' ? 'delivered' : undefined,
+  });
+
+  const handleConversationSelect = async (conversation) => {
+    if (!conversation?.id || !user?.id) return;
+    setCurrentConversation(conversation);
+    setShowStarters(false);
+    try {
+      const rows = await chatService.listMessages(conversation.id);
+      setMessages(rows.map(mapRowToMessage));
+    } catch (e) {
+      console.error('Failed to load messages:', e);
+    }
   };
 
-  const handleQuickAction = (action) => {
-    switch (action.type) {
-      case 'view_budget':
-        // Navigate to budget page or show budget details
-        console.log('View budget action');
-        break;
-      case 'set_alert':
-        // Set up spending alert
-        console.log('Set alert action');
-        break;
-      case 'create_goal':
-        // Create financial goal
-        console.log('Create goal action');
-        break;
-      default:
-        console.log('Quick action:', action);
+  const handleNewConversation = async () => {
+    if (!user?.id) return;
+    try {
+      const conv = await chatService.createConversation(user.id, { title: null });
+      setCurrentConversation(conv);
+      setMessages(initialMessages);
+      setShowStarters(true);
+    } catch (e) {
+      console.error('Failed to create conversation:', e);
+    }
+  };
+
+  const handleQuickAction = async (action) => {
+    try {
+      const res = await aiService.applyQuickAction(action, user?.id);
+      if (res?.ok) {
+        // Refresh context after potential writes
+        await loadUserContext();
+        if (res.navigateTo) {
+          window.location.href = res.navigateTo;
+        }
+      } else {
+        console.warn('Quick action failed', res?.error);
+      }
+    } catch (e) {
+      console.error('Quick action error', e);
     }
   };
 
   const handleSendMessage = async (messageText) => {
     if (!messageText?.trim()) return;
+    setIsTyping(true);
+    setShowStarters(false);
 
-    // Add user message
-    const userMessage = {
-      id: Date.now(),
+    // Optimistically show user message
+    const tempUserId = `temp-user-${Date.now()}`;
+    const optimisticUser = {
+      id: tempUserId,
       sender: 'user',
       type: 'text',
       content: messageText,
       timestamp: new Date(),
-      status: 'sent'
+      status: 'sent',
     };
+    setMessages((prev) => [...prev, optimisticUser]);
 
-    setMessages(prev => [...prev, userMessage]);
-    setShowStarters(false);
-    setIsTyping(true);
+    // Ensure conversation exists (best-effort)
+    let convo = currentConversation;
+    if (!convo?.id) {
+      try {
+        convo = await chatService.createConversation(user.id, { title: null });
+        setCurrentConversation(convo);
+      } catch (e) {
+        console.warn('Could not create conversation (ephemeral fallback):', e?.message);
+      }
+    }
 
+    // Persist user message (best-effort)
+    if (convo?.id) {
+      try {
+        const userRow = await chatService.addMessage(convo.id, user.id, {
+          role: 'user',
+          content: messageText,
+          type: 'text',
+          provider: null,
+          metadata: null,
+        });
+        setMessages((prev) => prev.map((m) => (m.id === tempUserId ? mapRowToMessage(userRow) : m)));
+        if (!convo.title) {
+          const title = messageText.slice(0, 60);
+          try { await chatService.updateConversationTitle(convo.id, title); } catch {}
+          setCurrentConversation((prev) => (prev ? { ...prev, title } : prev));
+        }
+      } catch (e) {
+        console.warn('Persist user message failed; continuing ephemeral:', e?.message);
+      }
+    }
+
+    // Generate AI response regardless of persistence
     try {
-      // Generate real AI response
       const aiResponseData = await generateAIResponse(messageText);
-      const aiMessage = {
-        id: Date.now() + 1,
+      const tempAiId = `temp-ai-${Date.now()}`;
+      const aiMsg = {
+        id: tempAiId,
         sender: 'ai',
-        ...aiResponseData,
-        timestamp: new Date()
+        type: aiResponseData?.type || 'text',
+        content: aiResponseData?.content || '',
+        quickActions: aiResponseData?.quickActions || null,
+        provider: aiResponseData?.provider || null,
+        timestamp: new Date(),
       };
+      setMessages((prev) => [...prev, aiMsg]);
 
-      setMessages(prev => [...prev, aiMessage]);
+      if (convo?.id) {
+        try {
+          const aiRow = await chatService.addMessage(convo.id, user.id, {
+            role: 'ai',
+            content: aiResponseData?.content || '',
+            type: aiResponseData?.type || 'text',
+            quickActions: aiResponseData?.quickActions || null,
+            provider: aiResponseData?.provider || null,
+            metadata: null,
+          });
+          setMessages((prev) => prev.map((m) => (m.id === tempAiId ? mapRowToMessage(aiRow) : m)));
+        } catch (e) {
+          console.warn('Persist AI message failed; kept ephemeral:', e?.message);
+        }
+      }
     } catch (error) {
-      console.error('Error in AI response:', error);
-      // Add error message
-      const errorMessage = {
-        id: Date.now() + 1,
-        sender: 'ai',
-        type: 'text',
-        content: 'I apologize, but I encountered an error processing your request. Please try again.',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      console.error('AI generation failed:', error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `err-${Date.now()}`,
+          sender: 'ai',
+          type: 'text',
+          content: 'I apologize, I could not generate a response just now. Please try again shortly.',
+          timestamp: new Date(),
+        },
+      ]);
     } finally {
       setIsTyping(false);
     }
   };
+
+  // Bootstrap conversation: open last or show starter
+  useEffect(() => {
+    const init = async () => {
+      if (!user?.id) return;
+      try {
+        const list = await chatService.listConversations(user.id);
+        if (list.length > 0) {
+          await handleConversationSelect(list[0]);
+        } else {
+          setMessages(initialMessages);
+          setShowStarters(true);
+        }
+      } catch (e) {
+        console.error('Failed to load conversations', e);
+      }
+    };
+    init();
+  }, [user?.id]);
+
+  // Realtime new messages for current conversation
+  useEffect(() => {
+    if (!currentConversationId) return;
+    const channel = supabase
+      .channel(`ai_messages:${currentConversationId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'ai_messages', filter: `conversation_id=eq.${currentConversationId}` },
+        (payload) => {
+          const row = payload?.new;
+          if (!row) return;
+          setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, mapRowToMessage(row)]));
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [currentConversationId]);
 
   return (
     <>
@@ -172,12 +292,23 @@ const AIFinancialAssistant = () => {
       </Helmet>
       <div className="min-h-screen bg-background">
         <HeaderBar />
+        <main className="pt-16 pb-20 lg:pb-4 lg:pl-64">
         
-        <div className="flex h-screen pt-16">
+        <div className="flex h-[calc(100vh-4rem)]">
           {/* Conversation History Sidebar */}
           <ConversationHistory 
             isVisible={showHistory}
             onConversationSelect={handleConversationSelect}
+            onNewConversation={handleNewConversation}
+            currentConversationId={currentConversationId}
+            onClose={() => setShowHistory(false)}
+            onArchived={(archivedId) => {
+              if (archivedId === currentConversationId) {
+                setCurrentConversation(null);
+                setMessages(initialMessages);
+                setShowStarters(true);
+              }
+            }}
           />
           
           {/* Main Chat Area */}
@@ -212,7 +343,7 @@ const AIFinancialAssistant = () => {
             {/* Chat Messages */}
             <div 
               ref={chatContainerRef}
-              className="flex-1 overflow-y-auto p-4 pb-20 lg:pb-4"
+              className="flex-1 overflow-y-auto p-4 pb-28 lg:pb-8"
             >
               {/* Welcome Message & Starters */}
               {messages?.length <= 1 && showStarters && (
@@ -238,7 +369,7 @@ const AIFinancialAssistant = () => {
             </div>
 
             {/* Chat Input */}
-            <div className="border-t border-border bg-card">
+            <div className="sticky bottom-0 z-10 bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur">
               <div className="max-w-4xl mx-auto">
                 <ChatInput
                   onSendMessage={handleSendMessage}
@@ -252,6 +383,8 @@ const AIFinancialAssistant = () => {
           {/* Financial Summary Widget */}
           <FinancialSummaryWidget isVisible={showSummary} />
         </div>
+
+        </main>
 
         <BottomTabNavigation />
       </div>

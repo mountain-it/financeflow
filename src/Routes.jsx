@@ -1,10 +1,11 @@
 import React from "react";
 import { BrowserRouter, Routes as RouterRoutes, Route } from "react-router-dom";
-import ScrollToTop from "components/ScrollToTop";
-import ErrorBoundary from "components/ErrorBoundary";
+import ScrollToTop from "./components/ScrollToTop";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import NotFound from "pages/NotFound";
+import { PreferencesProvider } from "./contexts/PreferencesContext";
+import NotFound from "./pages/NotFound";
 import FinancialReports from './pages/financial-reports';
 import Dashboard from './pages/dashboard';
 import ExpenseManagement from './pages/expense-management';
@@ -19,9 +20,10 @@ const Routes = () => {
     <BrowserRouter>
       <ErrorBoundary>
         <AuthProvider>
-          <ThemeProvider>
-            <ScrollToTop />
-            <RouterRoutes>
+          <PreferencesProvider>
+            <ThemeProvider>
+              <ScrollToTop />
+              <RouterRoutes>
               {/* Define your route here */}
               <Route path="/" element={<AIFinancialAssistant />} />
               <Route path="/financial-reports" element={<FinancialReports />} />
@@ -34,7 +36,8 @@ const Routes = () => {
               <Route path="/admin-dashboard" element={<AdminDashboard />} />
               <Route path="*" element={<NotFound />} />
             </RouterRoutes>
-          </ThemeProvider>
+            </ThemeProvider>
+          </PreferencesProvider>
         </AuthProvider>
       </ErrorBoundary>
     </BrowserRouter>

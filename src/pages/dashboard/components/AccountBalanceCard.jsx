@@ -1,7 +1,10 @@
 import React from 'react';
 import Icon from '../../../components/AppIcon';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 const AccountBalanceCard = ({ balance, change, changeType }) => {
+  const { currency, locale } = usePreferences();
   return (
     <div className="bg-card border border-border rounded-lg p-6 financial-shadow-card">
       <div className="flex items-center justify-between mb-4">
@@ -11,7 +14,7 @@ const AccountBalanceCard = ({ balance, change, changeType }) => {
         </div>
       </div>
       <div className="space-y-2">
-        <p className="text-3xl font-bold text-foreground">${balance?.toLocaleString()}</p>
+        <p className="text-3xl font-bold text-foreground">{formatCurrency(balance, currency, locale)}</p>
         <div className="flex items-center space-x-2">
           <Icon 
             name={changeType === 'increase' ? 'TrendingUp' : 'TrendingDown'} 
@@ -19,7 +22,7 @@ const AccountBalanceCard = ({ balance, change, changeType }) => {
             className={changeType === 'increase' ? 'text-success' : 'text-error'} 
           />
           <span className={`text-sm font-medium ${changeType === 'increase' ? 'text-success' : 'text-error'}`}>
-            {changeType === 'increase' ? '+' : '-'}${Math.abs(change)?.toLocaleString()} this month
+            {changeType === 'increase' ? '+' : '-'}{formatCurrency(Math.abs(change), currency, locale)} this month
           </span>
         </div>
       </div>

@@ -1,7 +1,10 @@
 import React from 'react';
 import Icon from '../../../components/AppIcon';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 const BudgetProgressCard = ({ budgets }) => {
+  const { currency, locale } = usePreferences();
   return (
     <div className="bg-card border border-border rounded-lg p-6 financial-shadow-card">
       <div className="flex items-center justify-between mb-4">
@@ -23,7 +26,7 @@ const BudgetProgressCard = ({ budgets }) => {
                   <span className="text-sm font-medium text-foreground">{budget?.category}</span>
                 </div>
                 <span className="text-sm text-muted-foreground">
-                  ${budget?.spent?.toLocaleString()} / ${budget?.limit?.toLocaleString()}
+                  {formatCurrency(budget?.spent, currency, locale)} / {formatCurrency(budget?.limit, currency, locale)}
                 </span>
               </div>
               <div className="w-full bg-muted rounded-full h-2">
@@ -33,7 +36,7 @@ const BudgetProgressCard = ({ budgets }) => {
                 ></div>
               </div>
               {isOverBudget && (
-                <p className="text-xs text-error">Over budget by ${(budget?.spent - budget?.limit)?.toLocaleString()}</p>
+                <p className="text-xs text-error">Over budget by {formatCurrency((budget?.spent - budget?.limit), currency, locale)}</p>
               )}
             </div>
           );

@@ -21,10 +21,9 @@ export const AuthProvider = ({ children }) => {
   const handleAuthStateChange = (event, session) => {
     // SYNC OPERATIONS ONLY - NO ASYNC/AWAIT ALLOWED
     if (session?.user) {
-      // Only set user profile if we have both user and profile data
-      fetchUserProfile(session?.user?.id).then(() => {
-        setUser(session.user);
-      });
+      setUser(session?.user)
+      // Fetch user profile data separately
+      fetchUserProfile(session?.user?.id)
     } else {
       setUser(null)
       setUserProfile(null)
@@ -34,42 +33,16 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUserProfile = async (userId) => {
     try {
-      // First try to fetch existing profile
       const { data, error } = await supabase?.from('user_profiles')?.select('*')?.eq('id', userId)?.single()
-      
+
       if (error && error?.code !== 'PGRST116') {
         console.error('Error fetching user profile:', error)
         return
       }
-  
-      // If no profile exists, create a default one
-      if (!data) {
-        const { data: newProfile, error: createError } = await supabase?.from('user_profiles')?.insert([
-          {
-            id: userId,
-            name: user?.email?.split('@')[0] || 'New User',
-            email: user?.email,
-            role: 'user',
-            theme_preference: 'light',
-            created_at: new Date().toISOString()
-          }
-        ]).select()?.single()
-        
-        if (createError) {
-          console.error('Error creating default profile:', createError)
-          return
-        }
-        
-        setUserProfile(newProfile)
-      } else {
-        setUserProfile(data)
-      }
-      // Only set user state after we have the profile data
-      setUser(user)
+
+      setUserProfile(data)
     } catch (err) {
       console.error('Error in fetchUserProfile:', err)
-      setUser(null)
-      setUserProfile(null)
     }
   }
 

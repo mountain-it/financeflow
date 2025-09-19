@@ -44,6 +44,10 @@
     
     /* Radius */
     --radius: 0.5rem;
+
+    /* Layout */
+    --sidebar-width: 16rem; /* matches w-64 */
+    --sidebar-collapsed-width: 5rem; /* approx w-20 */
   }
 
   .dark {
@@ -113,5 +117,15 @@
   
   .financial-slide {
     transition: transform 300ms ease-out;
+  }
+}
+
+/* Sidebar layout overrides for desktop */
+@media (min-width: 1024px) {
+  body.sidebar-expanded main {
+    padding-left: var(--sidebar-width) !important;
+  }
+  body.sidebar-collapsed main {
+    padding-left: var(--sidebar-collapsed-width) !important;
   }
 }

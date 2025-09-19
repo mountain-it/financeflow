@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 const BudgetVisualization = ({ categories, monthlyComparison }) => {
   const [activeView, setActiveView] = useState('pie'); // 'pie' or 'comparison'
@@ -57,11 +59,11 @@ const BudgetVisualization = ({ categories, monthlyComparison }) => {
           <div className="space-y-1 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Allocated:</span>
-              <span className="text-popover-foreground">${data?.value?.toLocaleString()}</span>
+              <span className="text-popover-foreground">{formatCurrency(data?.value, currency, locale)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Spent:</span>
-              <span className="text-popover-foreground">${data?.spent?.toLocaleString()}</span>
+              <span className="text-popover-foreground">{formatCurrency(data?.spent, currency, locale)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Usage:</span>
@@ -93,7 +95,7 @@ const BudgetVisualization = ({ categories, monthlyComparison }) => {
                   <span className="text-sm text-muted-foreground">{entry?.dataKey}:</span>
                 </div>
                 <span className="text-sm font-medium text-popover-foreground">
-                  ${entry?.value?.toLocaleString()}
+                  {formatCurrency(entry?.value, currency, locale)}
                 </span>
               </div>
             ))}
@@ -104,6 +106,7 @@ const BudgetVisualization = ({ categories, monthlyComparison }) => {
     return null;
   };
 
+  const { currency, locale } = usePreferences();
   return (
     <div className="bg-card rounded-lg border border-border financial-shadow-card">
       <div className="p-4 lg:p-6 border-b border-border">
@@ -169,7 +172,7 @@ const BudgetVisualization = ({ categories, monthlyComparison }) => {
                   ></div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{category?.name}</p>
-                    <p className="text-xs text-muted-foreground">${category?.value?.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">{formatCurrency(category?.value, currency, locale)}</p>
                   </div>
                 </div>
               ))}
@@ -190,7 +193,7 @@ const BudgetVisualization = ({ categories, monthlyComparison }) => {
                   <YAxis 
                     stroke="var(--color-muted-foreground)"
                     fontSize={12}
-                    tickFormatter={(value) => `$${(value / 1000)?.toFixed(0)}k`}
+                    tickFormatter={(value) => formatCurrency(value, currency, locale)}
                   />
                   <Tooltip content={<CustomBarTooltip />} />
                   <Legend />
@@ -215,7 +218,7 @@ const BudgetVisualization = ({ categories, monthlyComparison }) => {
               <div className="text-center p-3 rounded-lg bg-muted/50">
                 <Icon name="TrendingUp" size={20} className="text-success mx-auto mb-1" />
                 <p className="text-xs text-muted-foreground">Avg. Savings</p>
-                <p className="text-sm font-semibold text-foreground">$1,250</p>
+                <p className="text-sm font-semibold text-foreground">{formatCurrency(1250, currency, locale)}</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-muted/50">
                 <Icon name="Target" size={20} className="text-primary mx-auto mb-1" />

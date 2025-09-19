@@ -1,7 +1,11 @@
 import React from 'react';
 import Icon from '../../../components/AppIcon';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
+import { useNavigate } from 'react-router-dom';
 
 const FinancialSummaryWidget = ({ isVisible }) => {
+  const navigate = useNavigate();
   const summaryData = {
     monthlyBudget: 3500,
     spent: 2847,
@@ -22,6 +26,7 @@ const FinancialSummaryWidget = ({ isVisible }) => {
 
   const spentPercentage = (summaryData?.spent / summaryData?.monthlyBudget) * 100;
   const savingsPercentage = (summaryData?.savedThisMonth / summaryData?.savingsGoal) * 100;
+  const { currency, locale } = usePreferences();
 
   if (!isVisible) return null;
 
@@ -42,7 +47,7 @@ const FinancialSummaryWidget = ({ isVisible }) => {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Spent</span>
-              <span className="font-semibold text-foreground">${summaryData?.spent?.toLocaleString()}</span>
+              <span className="font-semibold text-foreground">{formatCurrency(summaryData?.spent, currency, locale)}</span>
             </div>
             
             <div className="w-full bg-muted rounded-full h-2">
@@ -55,7 +60,7 @@ const FinancialSummaryWidget = ({ isVisible }) => {
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Remaining</span>
               <span className={`font-semibold ${summaryData?.remaining < 0 ? 'text-error' : 'text-success'}`}>
-                ${Math.abs(summaryData?.remaining)?.toLocaleString()}
+                {formatCurrency(Math.abs(summaryData?.remaining), currency, locale)}
               </span>
             </div>
           </div>
@@ -71,7 +76,7 @@ const FinancialSummaryWidget = ({ isVisible }) => {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Progress</span>
-              <span className="font-semibold text-accent">${summaryData?.savedThisMonth}</span>
+              <span className="font-semibold text-accent">{formatCurrency(summaryData?.savedThisMonth, currency, locale)}</span>
             </div>
             
             <div className="w-full bg-muted rounded-full h-2">
@@ -83,7 +88,7 @@ const FinancialSummaryWidget = ({ isVisible }) => {
             
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Goal</span>
-              <span className="font-semibold text-accent">${summaryData?.savingsGoal}</span>
+              <span className="font-semibold text-accent">{formatCurrency(summaryData?.savingsGoal, currency, locale)}</span>
             </div>
           </div>
         </div>
@@ -104,7 +109,7 @@ const FinancialSummaryWidget = ({ isVisible }) => {
                   Due {new Date(bill.dueDate)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </p>
               </div>
-              <span className="font-semibold text-sm text-foreground">${bill?.amount}</span>
+              <span className="font-semibold text-sm text-foreground">{formatCurrency(bill?.amount, currency, locale)}</span>
             </div>
           ))}
         </div>
@@ -121,7 +126,7 @@ const FinancialSummaryWidget = ({ isVisible }) => {
             <div key={index} className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-foreground">{category?.name}</span>
-                <span className="font-medium text-sm text-foreground">${category?.amount}</span>
+                <span className="font-medium text-sm text-foreground">{formatCurrency(category?.amount, currency, locale)}</span>
               </div>
               <div className="w-full bg-muted rounded-full h-1.5">
                 <div 
@@ -137,19 +142,31 @@ const FinancialSummaryWidget = ({ isVisible }) => {
       <div className="space-y-3">
         <h4 className="font-medium text-sm text-foreground">Quick Actions</h4>
         <div className="grid grid-cols-2 gap-2">
-          <button className="p-3 bg-muted/30 hover:bg-muted/50 rounded-lg border border-border financial-transition text-left">
+          <button
+            onClick={() => navigate('/expense-management')}
+            className="p-3 bg-muted/30 hover:bg-muted/50 rounded-lg border border-border financial-transition text-left"
+          >
             <Icon name="Plus" size={16} className="text-primary mb-1" />
             <p className="text-xs font-medium text-foreground">Add Expense</p>
           </button>
-          <button className="p-3 bg-muted/30 hover:bg-muted/50 rounded-lg border border-border financial-transition text-left">
+          <button
+            onClick={() => navigate('/budget-planning')}
+            className="p-3 bg-muted/30 hover:bg-muted/50 rounded-lg border border-border financial-transition text-left"
+          >
             <Icon name="Target" size={16} className="text-accent mb-1" />
             <p className="text-xs font-medium text-foreground">Set Goal</p>
           </button>
-          <button className="p-3 bg-muted/30 hover:bg-muted/50 rounded-lg border border-border financial-transition text-left">
+          <button
+            onClick={() => navigate('/financial-reports')}
+            className="p-3 bg-muted/30 hover:bg-muted/50 rounded-lg border border-border financial-transition text-left"
+          >
             <Icon name="BarChart3" size={16} className="text-secondary mb-1" />
             <p className="text-xs font-medium text-foreground">View Reports</p>
           </button>
-          <button className="p-3 bg-muted/30 hover:bg-muted/50 rounded-lg border border-border financial-transition text-left">
+          <button
+            onClick={() => navigate('/profile-settings')}
+            className="p-3 bg-muted/30 hover:bg-muted/50 rounded-lg border border-border financial-transition text-left"
+          >
             <Icon name="Settings" size={16} className="text-muted-foreground mb-1" />
             <p className="text-xs font-medium text-foreground">Settings</p>
           </button>

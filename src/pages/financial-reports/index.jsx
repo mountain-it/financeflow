@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
+import { formatCurrency } from '../../utils/formatCurrency';
 import HeaderBar from '../../components/ui/HeaderBar';
 import BottomTabNavigation from '../../components/ui/BottomTabNavigation';
 import ReportSelector from './components/ReportSelector';
@@ -12,10 +15,12 @@ import ScheduledReports from './components/ScheduledReports';
 
 const FinancialReports = () => {
   const { user } = useAuth();
+  const { currency, locale } = usePreferences();
   const [selectedReport, setSelectedReport] = useState('monthly-summary');
   const [isCustomReportOpen, setIsCustomReportOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const reportContainerRef = useRef(null);
   
   // Real data states
   const [metricsData, setMetricsData] = useState([]);
@@ -25,6 +30,8 @@ const FinancialReports = () => {
   const [aiInsights, setAiInsights] = useState([]);
   // Add state for scheduled reports
   const [scheduledReports, setScheduledReports] = useState([]);
+  // State for custom report data
+  const [customReportData, setCustomReportData] = useState(null);
   
   // Fetch scheduled reports from database
   const fetchScheduledReports = async () => {
@@ -157,7 +164,7 @@ const FinancialReports = () => {
           id: 1,
           type: 'income',
           title: 'Total Income',
-          value: `$${currentIncome.toLocaleString()}`,
+          value: `${formatCurrency(currentIncome, currency, locale)}`,
           subtitle: 'This month',
           change: `${incomeChange >= 0 ? '+' : ''}${incomeChange.toFixed(1)}%`,
           trend: incomeChange >= 0 ? 'up' : 'down',
@@ -167,7 +174,7 @@ const FinancialReports = () => {
           id: 2,
           type: 'expenses',
           title: 'Total Expenses',
-          value: `$${currentExpenses.toLocaleString()}`,
+          value: `${formatCurrency(currentExpenses, currency, locale)}`,
           subtitle: 'This month',
           change: `${expenseChange >= 0 ? '+' : ''}${expenseChange.toFixed(1)}%`,
           trend: expenseChange <= 0 ? 'up' : 'down'
@@ -186,7 +193,7 @@ const FinancialReports = () => {
           id: 4,
           type: 'budget',
           title: 'Budget Variance',
-          value: `${budgetVariance >= 0 ? '+' : ''}$${Math.abs(budgetVariance).toLocaleString()}`,
+          value: `${budgetVariance >= 0 ? '+' : ''}${formatCurrency(Math.abs(budgetVariance), currency, locale)}`,
           subtitle: budgetVariance >= 0 ? 'Under budget' : 'Over budget',
           change: `${budgetVariancePercent >= 0 ? '+' : ''}${budgetVariancePercent.toFixed(1)}%`,
           trend: budgetVariance >= 0 ? 'up' : 'down',
@@ -360,10 +367,10 @@ const FinancialReports = () => {
             type: 'warning',
             title: `${budget.name} Budget Exceeded`,
             summary: `You've spent ${variance}% more than budgeted on ${budget.name.toLowerCase()} this month`,
-            details: `Your ${budget.name.toLowerCase()} expenses have reached $${budget.value.toLocaleString()} this month, which is $${(budget.value - budget.budget).toLocaleString()} over your $${budget.budget.toLocaleString()} budget.`,
+            details: `Your ${budget.name.toLowerCase()} expenses have reached ${formatCurrency(budget.value, currency, locale)} this month, which is ${formatCurrency((budget.value - budget.budget), currency, locale)} over your ${formatCurrency(budget.budget, currency, locale)} budget.`,
             metrics: [
-              { label: 'Budget', value: `$${budget.budget.toLocaleString()}` },
-              { label: 'Spent', value: `$${budget.value.toLocaleString()}` },
+              { label: 'Budget', value: `${formatCurrency(budget.budget, currency, locale)}` },
+              { label: 'Spent', value: `${formatCurrency(budget.value, currency, locale)}` },
               { label: 'Variance', value: `+${variance}%` }
             ],
             recommendations: [
@@ -578,6 +585,11 @@ const FinancialReports = () => {
       setError('Failed to generate custom report');
     } finally {
       setLoading(false);
+      
+      // Auto-export PDF after generating custom report
+      setTimeout(() => {
+        handleExportPDF();
+      }, 1500);
     }
   };
   
@@ -607,26 +619,250 @@ const FinancialReports = () => {
     return processedData;
   };
 
-  // Remove these duplicate functions:
-  // const handleAddSchedule = (schedule) => {
-  //   setScheduledReports(prev => [...prev, schedule]);
-  // };
-  //
-  // const handleEditSchedule = (id) => {
-  //   console.log('Edit schedule:', id);
-  //   // Here you would open an edit modal
-  // };
-  //
-  // const handleDeleteSchedule = (id) => {
-  //   setScheduledReports(prev => prev?.filter(schedule => schedule?.id !== id));
-  // };
+  // Helper function to process spending trends data
+  const processSpendingTrends = (transactions) => {
+    if (!transactions || transactions.length === 0) return [];
+    
+    const monthlyData = {};
+    transactions.forEach(transaction => {
+      const date = new Date(transaction.transaction_date);
+      const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+      
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = {
+          month: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          income: 0,
+          expenses: 0
+        };
+      }
+      
+      const amount = parseFloat(transaction.amount || 0);
+      if (transaction.transaction_type === 'income') {
+        monthlyData[monthKey].income += amount;
+      } else if (transaction.transaction_type === 'expense') {
+        monthlyData[monthKey].expenses += Math.abs(amount);
+      }
+    });
+    
+    return Object.values(monthlyData).sort((a, b) => {
+      const aDate = new Date(a.month);
+      const bDate = new Date(b.month);
+      return aDate - bDate;
+    });
+  };
+
+  // Helper function to process category breakdown data
+  const processCategoryBreakdown = (transactions) => {
+    if (!transactions || transactions.length === 0) return [];
+    
+    const categoryData = {};
+    transactions.forEach(transaction => {
+      if (transaction.transaction_type === 'expense') {
+        const categoryName = transaction.expense_categories?.name || 'Other';
+        const amount = Math.abs(parseFloat(transaction.amount || 0));
+        
+        categoryData[categoryName] = (categoryData[categoryName] || 0) + amount;
+      }
+    });
+    
+    return Object.entries(categoryData).map(([name, value]) => ({
+      name,
+      value: Math.round(value)
+    })).sort((a, b) => b.value - a.value);
+  };
+
+  // Helper function to process budget comparison data
+  const processBudgetComparison = (transactions) => {
+    if (!transactions || transactions.length === 0) return [];
+    
+    const categoryData = {};
+    transactions.forEach(transaction => {
+      if (transaction.transaction_type === 'expense') {
+        const categoryName = transaction.expense_categories?.name || 'Other';
+        const amount = Math.abs(parseFloat(transaction.amount || 0));
+        
+        if (!categoryData[categoryName]) {
+          categoryData[categoryName] = {
+            name: categoryName,
+            spent: 0,
+            budget: 0 // Placeholder - would need actual budget data
+          };
+        }
+        categoryData[categoryName].spent += amount;
+      }
+    });
+    
+    return Object.values(categoryData);
+  };
+
+  // Helper function to process income vs expenses data
+  const processIncomeVsExpenses = (transactions) => {
+    if (!transactions || transactions.length === 0) return [];
+    
+    const monthlyData = {};
+    transactions.forEach(transaction => {
+      const date = new Date(transaction.transaction_date);
+      const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+      
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = {
+          month: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          income: 0,
+          expenses: 0
+        };
+      }
+      
+      const amount = parseFloat(transaction.amount || 0);
+      if (transaction.transaction_type === 'income') {
+        monthlyData[monthKey].income += amount;
+      } else if (transaction.transaction_type === 'expense') {
+        monthlyData[monthKey].expenses += Math.abs(amount);
+      }
+    });
+    
+    return Object.values(monthlyData).sort((a, b) => {
+      const aDate = new Date(a.month);
+      const bDate = new Date(b.month);
+      return aDate - bDate;
+    });
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      // Dynamically import jsPDF
+      const { jsPDF } = await import('jspdf/dist/jspdf.es.min.js');
+      
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Set initial y position
+      let yPosition = 20;
+
+      // Add header with logo and title
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('FinanceFlow', 105, yPosition, { align: 'center' });
+      yPosition += 10;
+
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Financial Report', 105, yPosition, { align: 'center' });
+      yPosition += 20;
+
+      // Add report date
+      pdf.setFontSize(12);
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, yPosition, { align: 'center' });
+      yPosition += 15;
+
+      // Add metrics data
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Financial Metrics', 20, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      metricsData.forEach(metric => {
+        if (yPosition > 250) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        pdf.text(`${metric.title}: ${metric.value} (${metric.change})`, 20, yPosition);
+        yPosition += 8;
+      });
+      yPosition += 10;
+
+      // Add spending analysis if available
+      if (spendingData.length > 0) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Spending by Category', 20, yPosition);
+        yPosition += 10;
+
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'normal');
+        spendingData.forEach((item, index) => {
+          if (yPosition > 250) {
+            pdf.addPage();
+            yPosition = 20;
+          }
+          pdf.text(`${index + 1}. ${item.name}: ${formatCurrency(item.value, currency, locale)}`, 20, yPosition);
+          yPosition += 8;
+        });
+        yPosition += 10;
+      }
+
+      // Add budget performance if available
+      if (budgetData.length > 0) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Budget Performance', 20, yPosition);
+        yPosition += 10;
+
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'normal');
+        budgetData.forEach((item, index) => {
+          if (yPosition > 250) {
+            pdf.addPage();
+            yPosition = 20;
+          }
+          const variance = item.budget > 0 ? ((item.value - item.budget) / item.budget * 100).toFixed(1) : 0;
+          const status = item.value <= item.budget ? 'Under Budget' : 'Over Budget';
+          pdf.text(`${index + 1}. ${item.name}: ${formatCurrency(item.value, currency, locale)} / ${formatCurrency(item.budget, currency, locale)} (${variance}%, ${status})`, 20, yPosition);
+          yPosition += 8;
+        });
+        yPosition += 10;
+      }
+
+      // Add AI insights if available
+      if (aiInsights.length > 0) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('AI Insights', 20, yPosition);
+        yPosition += 10;
+
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'normal');
+        aiInsights.forEach((insight, index) => {
+          if (yPosition > 250) {
+            pdf.addPage();
+            yPosition = 20;
+          }
+          pdf.text(`${index + 1}. ${insight.title}`, 20, yPosition);
+          yPosition += 8;
+          pdf.text(`   ${insight.summary}`, 20, yPosition);
+          yPosition += 8;
+        });
+      }
+
+      // Add footer
+      const pageCount = pdf.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'italic');
+        pdf.text(`Page ${i} of ${pageCount}`, 105, 280, { align: 'center' });
+        pdf.text('Generated by FinanceFlow - Your Personal Financial Assistant', 105, 285, { align: 'center' });
+      }
+
+      pdf.save('financial-report.pdf');
+      
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      // Fallback to print dialog
+      window.print();
+    }
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <HeaderBar />
-        <BottomTabNavigation />
-        <main className="pt-16 pb-20 lg:pb-6 lg:ml-64">
+        <main className="pt-16 pb-20 lg:pb-6 lg:pl-64">
           <div className="container mx-auto px-4 py-6 max-w-7xl">
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
@@ -636,6 +872,7 @@ const FinancialReports = () => {
             </div>
           </div>
         </main>
+        <BottomTabNavigation />
       </div>
     );
   }
@@ -644,8 +881,7 @@ const FinancialReports = () => {
     return (
       <div className="min-h-screen bg-background">
         <HeaderBar />
-        <BottomTabNavigation />
-        <main className="pt-16 pb-20 lg:pb-6 lg:ml-64">
+        <main className="pt-16 pb-20 lg:pb-6 lg:pl-64">
           <div className="container mx-auto px-4 py-6 max-w-7xl">
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
@@ -660,6 +896,7 @@ const FinancialReports = () => {
             </div>
           </div>
         </main>
+        <BottomTabNavigation />
       </div>
     );
   }
@@ -667,14 +904,14 @@ const FinancialReports = () => {
   return (
     <div className="min-h-screen bg-background">
       <HeaderBar />
-      <BottomTabNavigation />
-      <main className="pt-16 pb-20 lg:pb-6 lg:ml-64">
-        <div className="container mx-auto px-4 py-6 max-w-7xl">
+      <main className="pt-16 pb-20 lg:pb-6 lg:pl-64">
+        <div ref={reportContainerRef} className="container mx-auto px-4 py-6 max-w-7xl">
           {/* Report Selector */}
           <ReportSelector
             selectedReport={selectedReport}
             onReportChange={setSelectedReport}
             onCustomReportClick={() => setIsCustomReportOpen(true)}
+            onExportPDF={handleExportPDF}
           />
 
           {/* Metrics Cards */}
@@ -739,6 +976,7 @@ const FinancialReports = () => {
           </div>
         </div>
       </main>
+      <BottomTabNavigation />
       {/* Custom Report Panel */}
       <CustomReportPanel
         isOpen={isCustomReportOpen}

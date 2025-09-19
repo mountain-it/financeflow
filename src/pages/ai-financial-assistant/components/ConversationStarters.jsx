@@ -50,6 +50,15 @@ const ConversationStarters = ({ onStarterClick, isVisible }) => {
       description: 'Get investment recommendations',
       color: 'text-success',
       bgColor: 'bg-success/10'
+    },
+    {
+      id: 7,
+      icon: 'BarChart',
+      title: 'Invest in Stock',
+      description: 'Open investment account',
+      color: 'text-info',
+      bgColor: 'bg-info/10',
+      url: 'https://mountain.com.ng/account-opening-update-form-individual/'
     }
   ];
 
@@ -69,7 +78,13 @@ const ConversationStarters = ({ onStarterClick, isVisible }) => {
         {starters?.map((starter) => (
           <button
             key={starter?.id}
-            onClick={() => onStarterClick(starter)}
+            onClick={() => {
+              if (starter.url) {
+                window.open(starter.url, '_blank', 'noopener,noreferrer');
+              } else {
+                onStarterClick(starter);
+              }
+            }}
             className="flex items-start space-x-3 p-4 rounded-xl border border-border hover:border-primary/30 bg-card hover:bg-muted/30 financial-transition text-left group"
           >
             <div className={`flex-shrink-0 w-10 h-10 rounded-lg ${starter?.bgColor} flex items-center justify-center group-hover:scale-105 financial-transition`}>

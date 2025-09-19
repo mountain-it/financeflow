@@ -1,7 +1,10 @@
 import React from 'react';
 import Icon from '../../../components/AppIcon';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 const BudgetOverviewCard = ({ totalBudget, totalSpent, remainingBudget, budgetPeriod }) => {
+  const { currency, locale } = usePreferences();
   const spentPercentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
   const remainingPercentage = 100 - spentPercentage;
 
@@ -30,7 +33,7 @@ const BudgetOverviewCard = ({ totalBudget, totalSpent, remainingBudget, budgetPe
         {/* Total Budget */}
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">Total Budget</span>
-          <span className="text-lg font-semibold text-foreground">${totalBudget?.toLocaleString()}</span>
+          <span className="text-lg font-semibold text-foreground">{formatCurrency(totalBudget, currency, locale)}</span>
         </div>
 
         {/* Progress Bar */}
@@ -38,7 +41,7 @@ const BudgetOverviewCard = ({ totalBudget, totalSpent, remainingBudget, budgetPe
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Spent</span>
             <span className={`font-medium ${getStatusColor()}`}>
-              ${totalSpent?.toLocaleString()} ({spentPercentage?.toFixed(1)}%)
+              {formatCurrency(totalSpent, currency, locale)} ({spentPercentage?.toFixed(1)}%)
             </span>
           </div>
           <div className="w-full bg-muted rounded-full h-3">
@@ -53,7 +56,7 @@ const BudgetOverviewCard = ({ totalBudget, totalSpent, remainingBudget, budgetPe
         <div className="flex items-center justify-between pt-2 border-t border-border">
           <span className="text-sm text-muted-foreground">Remaining</span>
           <span className={`text-lg font-semibold ${remainingBudget >= 0 ? 'text-success' : 'text-error'}`}>
-            ${Math.abs(remainingBudget)?.toLocaleString()}
+            {formatCurrency(Math.abs(remainingBudget), currency, locale)}
             {remainingBudget < 0 && ' over budget'}
           </span>
         </div>

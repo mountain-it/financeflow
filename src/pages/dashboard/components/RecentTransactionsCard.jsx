@@ -1,6 +1,8 @@
 import React from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 const RecentTransactionsCard = ({ transactions, onViewAll }) => {
   const getCategoryIcon = (category) => {
@@ -24,6 +26,7 @@ const RecentTransactionsCard = ({ transactions, onViewAll }) => {
     });
   };
 
+  const { currency, locale } = usePreferences();
   return (
     <div className="bg-card border border-border rounded-lg p-6 financial-shadow-card">
       <div className="flex items-center justify-between mb-4">
@@ -54,7 +57,7 @@ const RecentTransactionsCard = ({ transactions, onViewAll }) => {
               <p className={`font-semibold ${
                 transaction?.type === 'income' ? 'text-success' : 'text-foreground'
               }`}>
-                {transaction?.type === 'income' ? '+' : '-'}${transaction?.amount?.toLocaleString()}
+                {transaction?.type === 'income' ? '+' : '-'}{formatCurrency(transaction?.amount, currency, locale)}
               </p>
               <p className="text-xs text-muted-foreground">{formatDate(transaction?.date)}</p>
             </div>

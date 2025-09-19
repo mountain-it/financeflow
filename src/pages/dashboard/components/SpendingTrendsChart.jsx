@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 const SpendingTrendsChart = ({ data }) => {
   const [timeRange, setTimeRange] = useState('7d');
@@ -26,13 +28,14 @@ const SpendingTrendsChart = ({ data }) => {
     return data?.filter(item => new Date(item.date) >= cutoffDate);
   };
 
+  const { currency, locale } = usePreferences();
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload?.length) {
       return (
         <div className="bg-popover border border-border rounded-lg p-3 financial-shadow-modal">
           <p className="text-sm font-medium text-popover-foreground">{label}</p>
           <p className="text-sm text-primary">
-            Spending: ${payload?.[0]?.value?.toLocaleString()}
+            Spending: {formatCurrency(payload?.[0]?.value, currency, locale)}
           </p>
         </div>
       );
@@ -76,7 +79,7 @@ const SpendingTrendsChart = ({ data }) => {
             <YAxis 
               stroke="var(--color-muted-foreground)"
               fontSize={12}
-              tickFormatter={(value) => `$${value}`}
+              tickFormatter={(value) => formatCurrency(value, currency, locale)}
             />
             <Tooltip content={<CustomTooltip />} />
             <Line 

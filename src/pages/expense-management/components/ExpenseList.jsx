@@ -1,5 +1,7 @@
 import React from 'react';
 import ExpenseCard from './ExpenseCard';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 const ExpenseList = ({ expenses, onEditExpense, onDeleteExpense, isLoading }) => {
   if (isLoading) {
@@ -72,6 +74,8 @@ const ExpenseList = ({ expenses, onEditExpense, onDeleteExpense, isLoading }) =>
     return dayExpenses?.reduce((total, expense) => total + expense?.amount, 0);
   };
 
+  const { currency, locale } = usePreferences();
+
   return (
     <div className="space-y-6">
       {Object.entries(groupedExpenses)?.sort(([a], [b]) => new Date(b) - new Date(a))?.map(([date, dayExpenses]) => (
@@ -82,7 +86,7 @@ const ExpenseList = ({ expenses, onEditExpense, onDeleteExpense, isLoading }) =>
                 {formatGroupDate(date)}
               </h3>
               <span className="text-sm font-medium text-destructive">
-                -${calculateDayTotal(dayExpenses)?.toFixed(2)}
+                {formatCurrency(-calculateDayTotal(dayExpenses), currency, locale)}
               </span>
             </div>
 

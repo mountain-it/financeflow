@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 const CategoryBudgetList = ({ categories, onEditCategory, onDeleteCategory }) => {
   const [expandedCategories, setExpandedCategories] = useState(new Set());
+  const { currency, locale } = usePreferences();
 
   const toggleCategory = (categoryId) => {
     const newExpanded = new Set(expandedCategories);
@@ -79,7 +82,7 @@ const CategoryBudgetList = ({ categories, onEditCategory, onDeleteCategory }) =>
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    ${category?.spent?.toLocaleString()} of ${category?.allocated?.toLocaleString()}
+                    {formatCurrency(category?.spent, currency, locale)} of {formatCurrency(category?.allocated, currency, locale)}
                   </span>
                   <span className={`font-medium ${getStatusColor(spentPercentage)}`}>
                     {spentPercentage?.toFixed(1)}%
@@ -95,11 +98,11 @@ const CategoryBudgetList = ({ categories, onEditCategory, onDeleteCategory }) =>
 
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Remaining: ${Math.max(0, category?.allocated - category?.spent)?.toLocaleString()}
+                    Remaining: {formatCurrency(Math.max(0, category?.allocated - category?.spent), currency, locale)}
                   </span>
                   {spentPercentage > 100 && (
                     <span className="text-error font-medium">
-                      ${(category?.spent - category?.allocated)?.toLocaleString()} over
+                      {formatCurrency((category?.spent - category?.allocated), currency, locale)} over
                     </span>
                   )}
                 </div>
@@ -114,7 +117,7 @@ const CategoryBudgetList = ({ categories, onEditCategory, onDeleteCategory }) =>
                       {category?.recentTransactions?.slice(0, 3)?.map((transaction) => (
                         <div key={transaction?.id} className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground truncate">{transaction?.description}</span>
-                          <span className="text-foreground font-medium">${transaction?.amount?.toLocaleString()}</span>
+                          <span className="text-foreground font-medium">{formatCurrency(transaction?.amount, currency, locale)}</span>
                         </div>
                       ))}
                     </div>

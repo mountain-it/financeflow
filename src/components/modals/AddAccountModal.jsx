@@ -3,16 +3,19 @@ import Icon from '../AppIcon';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
+import { currencyOptions } from '../../utils/currencies';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 
 const AddAccountModal = ({ isOpen, onClose, onAccountAdded }) => {
   const { user } = useAuth();
+  const { currency: preferredCurrency } = usePreferences();
   const [formData, setFormData] = useState({
     name: '',
     type: '',
     balance: '',
-    currency: 'USD'
+    currency: preferredCurrency || 'USD'
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -24,12 +27,7 @@ const AddAccountModal = ({ isOpen, onClose, onAccountAdded }) => {
     { value: 'investment', label: 'Investment Account' }
   ];
 
-  const currencies = [
-    { value: 'USD', label: 'US Dollar (USD)' },
-    { value: 'EUR', label: 'Euro (EUR)' },
-    { value: 'GBP', label: 'British Pound (GBP)' },
-    { value: 'CAD', label: 'Canadian Dollar (CAD)' }
-  ];
+  const currencies = currencyOptions;
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -65,7 +63,7 @@ const AddAccountModal = ({ isOpen, onClose, onAccountAdded }) => {
       if (insertError) throw insertError;
 
       onAccountAdded(account);
-      setFormData({ name: '', type: '', balance: '', currency: 'USD' });
+      setFormData({ name: '', type: '', balance: '', currency: preferredCurrency || 'USD' });
       onClose();
     } catch (err) {
       console.error('Error adding account:', err);

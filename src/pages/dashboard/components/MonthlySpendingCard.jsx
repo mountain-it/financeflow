@@ -1,8 +1,11 @@
 import React from 'react';
 import Icon from '../../../components/AppIcon';
+import { usePreferences } from '../../../contexts/PreferencesContext';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 const MonthlySpendingCard = ({ spent, budget, categories }) => {
   const spentPercentage = (spent / budget) * 100;
+  const { currency, locale } = usePreferences();
   
   return (
     <div className="bg-card border border-border rounded-lg p-6 financial-shadow-card">
@@ -15,8 +18,8 @@ const MonthlySpendingCard = ({ spent, budget, categories }) => {
       <div className="space-y-4">
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-2xl font-bold text-foreground">${spent?.toLocaleString()}</span>
-            <span className="text-sm text-muted-foreground">of ${budget?.toLocaleString()}</span>
+            <span className="text-2xl font-bold text-foreground">{formatCurrency(spent, currency, locale)}</span>
+            <span className="text-sm text-muted-foreground">of {formatCurrency(budget, currency, locale)}</span>
           </div>
           <div className="w-full bg-muted rounded-full h-2">
             <div 
@@ -33,7 +36,7 @@ const MonthlySpendingCard = ({ spent, budget, categories }) => {
                 <div className={`w-3 h-3 rounded-full ${category?.color}`}></div>
                 <span className="text-muted-foreground">{category?.name}</span>
               </div>
-              <span className="font-medium text-foreground">${category?.amount?.toLocaleString()}</span>
+              <span className="font-medium text-foreground">{formatCurrency(category?.amount, currency, locale)}</span>
             </div>
           ))}
         </div>

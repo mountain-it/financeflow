@@ -7,10 +7,12 @@ import SecuritySettings from './components/SecuritySettings';
 import PreferencesSettings from './components/PreferencesSettings';
 import PrivacySettings from './components/PrivacySettings';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 import { supabase } from '../../lib/supabase';
 
 const ProfileSettings = () => {
   const { user, userProfile, updateProfile } = useAuth();
+  const { setCurrency, setLocale } = usePreferences();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -250,6 +252,16 @@ const ProfileSettings = () => {
         });
 
         if (updateError) throw updateError;
+      }
+
+      // Persist currency and language locally for global usage
+      if (updatedPreferences?.currency) {
+        try { localStorage.setItem('financeflow_currency', updatedPreferences.currency); } catch {}
+        try { setCurrency(updatedPreferences.currency); } catch {}
+      }
+      if (updatedPreferences?.language) {
+        try { localStorage.setItem('financeflow_locale', updatedPreferences.language); } catch {}
+        try { setLocale(updatedPreferences.language); } catch {}
       }
 
       setPreferencesData(updatedPreferences);
